@@ -88,6 +88,7 @@ class FrontendPlugin implements Plugin {
 				this.serverless.pluginManager.spawn("frontend:addFunctions"),
 			"after:aws:info:displayEndpoints": this.addSiteUrl.bind(this),
 			"before:package:finalize": this.addResources.bind(this),
+			"before:remove:remove": this.emptySiteBucket.bind(this),
 			"before:package:createDeploymentArtifacts": () =>
 				this.serverless.pluginManager.spawn("frontend:build"),
 			"before:package:function:package": () =>
@@ -113,7 +114,9 @@ class FrontendPlugin implements Plugin {
 			const stat = await fs.stat(name);
 			return stat.isFile();
 		} catch (err) {
-			console.error(err);
+			if (!String(err).includes("ENOENT")) {
+				console.error(err);
+			}
 			return false;
 		}
 	}
@@ -253,7 +256,7 @@ class FrontendPlugin implements Plugin {
 	}
 
 	async addCloudfrontResources() {
-		this.addResource("OriginAccessControl", {
+		this.addResource("SiteOriginAccessControl", {
 			Type: "AWS::CloudFront::OriginAccessControl",
 			Properties: {
 				OriginAccessControlConfig: {
@@ -348,26 +351,26 @@ class FrontendPlugin implements Plugin {
 					StandardCacheBehaviors.staticFilesWithFallback;
 				break;
 		}
-		this.addResource("FrontendServerCachePolicy", {
+		this.addResource("SiteSSRCachePolicy", {
 			Type: "AWS::CloudFront::CachePolicy",
 			Properties: {
 				CachePolicyConfig: ServerFunctionCachePolicyConfig,
 			},
 		});
-		this.addResource("CloudFrontDistribution", {
+		this.addResource("SiteDistribution", {
 			Type: "AWS::CloudFront::Distribution",
 			Properties: {
 				DistributionConfig: distributionConfig,
 			},
 		});
-		this.addOutput("CloudFrontDomain", {
+		this.addOutput("SiteCloudFrontDomain", {
 			Description: "URL of the CloudFront distribution",
-			Value: { "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"] },
+			Value: { "Fn::GetAtt": ["SiteDistribution", "DomainName"] },
 		});
 		this.addOutput("SiteURL", {
 			Description: "URL of the CloudFront distribution",
 			//biome-ignore lint/suspicious/noTemplateCurlyInString: CloudFormation
-			Value: { "Fn::Sub": "https://${CloudFrontDistribution.DomainName}" },
+			Value: { "Fn::Sub": "https://${SiteDistribution.DomainName}" },
 		});
 	}
 
@@ -429,6 +432,8 @@ class FrontendPlugin implements Plugin {
 	}
 
 	async packageFunctions() {
+		const packageProgress = this.progress.get("package-functions");
+		packageProgress.update("Packaging functions");
 		switch (await this.detectFramework()) {
 			case "tanstack-start":
 			case "nuxt":
@@ -438,9 +443,12 @@ class FrontendPlugin implements Plugin {
 					".output",
 				);
 		}
+		packageProgress.remove();
 	}
 
 	async uploadAssets() {
+		const uploadProgress = this.progress.get("upload");
+		uploadProgress.update("Uploading frontend");
 		const outputs = await this.getStackOutputs();
 		const bucketName = outputs.SiteBucketName;
 		const framework = await this.detectFramework();
@@ -483,9 +491,12 @@ class FrontendPlugin implements Plugin {
 			};
 			await this.provider.request("S3", "putObject", params);
 		}
+		uploadProgress.remove();
 	}
 
 	async createInvalidation() {
+		const invalidateProgress = this.progress.get("invalidate");
+		invalidateProgress.update("Creating invalidation");
 		const stackName = this.provider.naming.getStackName();
 		const result: {
 			StackResources: Array<{
@@ -498,7 +509,7 @@ class FrontendPlugin implements Plugin {
 			{ StackName: stackName },
 		);
 		const distribution = result.StackResources.find(
-			(resource) => resource.LogicalResourceId === "CloudFrontDistribution",
+			(resource) => resource.LogicalResourceId === "SiteDistribution",
 		);
 		const distributionId = distribution?.PhysicalResourceId;
 		if (distributionId != null) {
@@ -512,6 +523,93 @@ class FrontendPlugin implements Plugin {
 					},
 				},
 			});
+		}
+		invalidateProgress.remove();
+	}
+
+	async listObjectsV2(bucketName: string): Promise<Array<{ Key: string }>> {
+		const objectsInBucket: { Key: string }[] = [];
+
+		let result: { Contents: { Key: string }[] } | undefined;
+		try {
+			result = await this.provider.request("S3", "listObjectsV2", {
+				Bucket: bucketName,
+				Prefix: "",
+			});
+		} catch (err) {
+			if (
+				err instanceof Error &&
+				"code" in err &&
+				err.code === "AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED"
+			) {
+				throw new this.serverless.classes.Error(
+					`Could not list objects in the deployment bucket. Make sure you have sufficient permissions to access it. [${err.code}]`,
+				);
+			}
+			throw err;
+		}
+
+		if (result) {
+			result.Contents.forEach((object) => {
+				objectsInBucket.push({
+					Key: object.Key,
+				});
+			});
+		}
+		return objectsInBucket;
+	}
+
+	async listObjects(bucketName: string) {
+		return this.listObjectsV2(bucketName);
+	}
+
+	async deleteObjects(bucketName: string) {
+		const objectsInBucket = await this.listObjects(bucketName);
+		if (objectsInBucket.length) {
+			const data = await this.provider.request("S3", "deleteObjects", {
+				Bucket: bucketName,
+				Delete: {
+					Objects: objectsInBucket,
+				},
+			});
+			if (data?.Errors?.length) {
+				const firstErrorCode = data.Errors[0].Code;
+
+				if (firstErrorCode === "AccessDenied") {
+					throw new this.serverless.classes.Error(
+						`Could not empty the S3 deployment bucket (${bucketName}). Make sure that you have permissions that allow S3 objects deletion. First encountered S3 error code: ${firstErrorCode} [CANNOT_DELETE_S3_OBJECTS_ACCESS_DENIED]`,
+					);
+				}
+
+				throw new this.serverless.classes.Error(
+					`Could not empty the S3 deployment bucket (${bucketName}). First encountered S3 error code: ${firstErrorCode} [CANNOT_DELETE_S3_OBJECTS_GENERIC]`,
+				);
+			}
+		}
+	}
+
+	async emptySiteBucket() {
+		const stackName = this.provider.naming.getStackName();
+		const result: {
+			StackResources: Array<{
+				LogicalResourceId: string;
+				PhysicalResourceId: string;
+			}>;
+		} = await this.provider.request(
+			"CloudFormation",
+			"describeStackResources",
+			{ StackName: stackName },
+		);
+		const siteBucket = result.StackResources.find(
+			(resource) => resource.LogicalResourceId === "SiteBucket",
+		);
+		const bucketName = siteBucket?.PhysicalResourceId;
+		if (bucketName != null) {
+			await this.deleteObjects(bucketName);
+		} else {
+			this.log.info(
+				"Site S3 bucket not found. Skipping S3 bucket objects removal",
+			);
 		}
 	}
 }

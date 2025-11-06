@@ -37,7 +37,7 @@ export const StandardSiteBucketPolicy = {
 						"AWS:SourceArn": {
 							"Fn::Sub":
 								//biome-ignore lint/suspicious/noTemplateCurlyInString: CloudFormation
-								"arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}",
+								"arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}",
 						},
 					},
 				},

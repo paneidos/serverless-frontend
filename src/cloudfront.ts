@@ -6,7 +6,7 @@ export const CachePolicies = {
 	UseOriginCacheControlHeaders: "83da9c7e-98b4-4e11-a168-04f0df8e2c65",
 	"UseOriginCacheControlHeaders-QueryStrings":
 		"4cc15a8a-d715-48a4-82b8-cc0b614638fe",
-	ServerFunctionCachePolicy: { Ref: "FrontendServerCachePolicy" },
+	ServerFunctionCachePolicy: { Ref: "SiteSSRCachePolicy" },
 } as const;
 
 export const OriginRequestPolicies = {
@@ -141,7 +141,7 @@ export const StandardCacheBehaviors: Record<
 export const ServerFunctionCachePolicyConfig = {
 	Name: {
 		//biome-ignore lint/suspicious/noTemplateCurlyInString: CloudFormation
-		"Fn::Sub": "${AWS::StackName}-frontend",
+		"Fn::Sub": "${AWS::StackName}-ssr",
 	},
 	Comment: {
 		//biome-ignore lint/suspicious/noTemplateCurlyInString: CloudFormation
@@ -170,7 +170,7 @@ export const StandardOrigins: Record<string, CloudfrontOrigin> = {
 	staticFiles: {
 		Id: "StaticFiles",
 		OriginAccessControlId: {
-			"Fn::GetAtt": ["OriginAccessControl", "Id"],
+			"Fn::GetAtt": ["SiteOriginAccessControl", "Id"],
 		},
 		S3OriginConfig: {
 			OriginAccessIdentity: "",
@@ -182,7 +182,7 @@ export const StandardOrigins: Record<string, CloudfrontOrigin> = {
 	staticFilesFallback: {
 		Id: "StaticFilesFallback",
 		OriginAccessControlId: {
-			"Fn::GetAtt": ["OriginAccessControl", "Id"],
+			"Fn::GetAtt": ["SiteOriginAccessControl", "Id"],
 		},
 		S3OriginConfig: {
 			OriginAccessIdentity: "",
