@@ -1,31 +1,32 @@
 {
-  "name": "serverless-frontend",
-  "version": "0.1.0",
-  "description": "Deploy frontend along with your Serverless application",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
-  "repository": "https://github.com/paneidos/serverless-frontend.git",
-  "author": "Sernin van de Krol",
-  "license": "MIT",
-  "scripts": {
-    "build": "tsc --project tsconfig.build.json",
-    "watch": "tsc --project tsconfig.build.json --watch",
-    "test": "jest"
-  },
-  "devDependencies": {
-    "@types/archiver": "^7.0.0",
-    "@types/serverless": "^3.12.27",
-    "jest": "^30.2.0",
-    "osls": "^3.58.0",
-    "serverless": "^3",
-    "ts-jest": "^29.4.5",
-    "typescript": "^5.9.3"
-  },
-  "files": [
-    "lib/**/*"
-  ],
-  "dependencies": {
-    "archiver": "^7.0.1",
-    "mime": "^4.1.0"
-  }
+	"name": "serverless-frontend",
+	"version": "0.1.0",
+	"description": "Deploy frontend along with your Serverless application",
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"repository": "https://github.com/paneidos/serverless-frontend.git",
+	"author": "Sernin van de Krol",
+	"license": "MIT",
+	"scripts": {
+		"build": "tsc --project tsconfig.build.json",
+		"watch": "tsc --project tsconfig.build.json --watch",
+		"test": "jest"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.2",
+		"@types/archiver": "^7.0.0",
+		"@types/serverless": "^3.12.27",
+		"jest": "^30.2.0",
+		"osls": "^3.58.0",
+		"serverless": "^3",
+		"ts-jest": "^29.4.5",
+		"typescript": "^5.9.3"
+	},
+	"files": [
+		"lib/**/*"
+	],
+	"dependencies": {
+		"archiver": "^7.0.1",
+		"mime": "^4.1.0"
+	}
 }
