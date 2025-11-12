@@ -23,7 +23,8 @@
 		"typescript": "^5.9.3"
 	},
 	"files": [
-		"lib/**/*"
+		"lib/**/*",
+    "README.md"
 	],
 	"dependencies": {
 		"archiver": "^7.0.1",
