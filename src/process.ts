@@ -20,11 +20,9 @@ export class Process {
 			});
 		});
 		this.process.stdout?.on("data", (data: string) => {
-			// console.log(data.toString())
 			this.stdout += data.toString();
 		});
 		this.process.stderr?.on("data", (data: string) => {
-			// console.error(data.toString())
 			this.stderr += data.toString();
 		});
 	}

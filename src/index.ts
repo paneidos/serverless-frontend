@@ -236,6 +236,8 @@ class FrontendPlugin implements Plugin {
 		const exitCode = await process.exitCode;
 		buildProgress.remove();
 		if (exitCode !== 0) {
+            this.log.error(process.stdout);
+            this.log.error(process.stderr);
 			throw new Error(`Build exited with code ${exitCode}`);
 		}
 	}
