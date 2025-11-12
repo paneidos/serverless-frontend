@@ -218,6 +218,22 @@ class FrontendPlugin implements Plugin {
 		throw new Error(`Unsupported build command for ${framework}`);
 	}
 
+	async frameworkBuildEnvironment(): Promise<Record<string, string>> {
+		const framework = await this.detectFramework();
+
+		switch (framework) {
+			case "tanstack-start":
+			case "nuxt":
+			case "nitro":
+				return {
+					NITRO_PRESET: "aws-lambda",
+					SERVER_PRESET: "aws-lambda",
+				};
+		}
+
+		return {};
+	}
+
 	async build() {
 		const buildProgress = this.progress.get("build");
 		buildProgress.update("Building frontend");
@@ -232,12 +248,13 @@ class FrontendPlugin implements Plugin {
 		if (cmd === undefined) {
 			throw new Error("No build command given");
 		}
-		const process = new Process(spawn(cmd, command));
-		const exitCode = await process.exitCode;
+		const env = { ...process.env, ...(await this.frameworkBuildEnvironment()) };
+		const buildProcess = new Process(spawn(cmd, command, { env }));
+		const exitCode = await buildProcess.exitCode;
 		buildProgress.remove();
 		if (exitCode !== 0) {
-            this.log.error(process.stdout);
-            this.log.error(process.stderr);
+            this.log.error(buildProcess.stdout);
+            this.log.error(buildProcess.stderr);
 			throw new Error(`Build exited with code ${exitCode}`);
 		}
 	}
