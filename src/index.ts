@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import fs, { readdir } from "node:fs/promises";
 import archiver from "archiver";
+import { identifyPackageManager } from "identify-package-manager";
 import mime from "mime";
 import type Serverless from "serverless";
 import type Aws from "serverless/aws";
@@ -196,14 +197,29 @@ class FrontendPlugin implements Plugin {
 		}
 	}
 
+	packageManagerRunCommand(script: string) {
+		const packageManager = identifyPackageManager(true);
+		switch (packageManager) {
+			case "yarn-berry":
+			case "yarn-classic":
+				return ["yarn", "run", script];
+			case "pnpm":
+				return ["pnpm", "run", script];
+			case "npm":
+				return ["npm", "run", script];
+			case "bun":
+				return ["bun", "run", script];
+			case "unknown":
+				throw new Error(
+					"Unknown package manager, specify build command manually",
+				);
+		}
+	}
+
 	async buildCommand(): Promise<string | string[]> {
 		if (this.customConfig.buildCommand !== undefined) {
 			return this.customConfig.buildCommand;
 		}
-		const isYarn = await this._hasFile("yarn.lock");
-		const isPnpm = await this._hasFile("pnpm-lock.json");
-
-		const packageManager = isYarn ? "yarn" : isPnpm ? "pnpm" : "npm";
 
 		const framework = await this.detectFramework();
 
@@ -212,10 +228,12 @@ class FrontendPlugin implements Plugin {
 			case "nuxt":
 			case "nitro":
 			case "vite":
-				return [packageManager, "build"];
+				return this.packageManagerRunCommand("build");
 		}
 
-		throw new Error(`Unsupported build command for ${framework}`);
+		throw new Error(
+			`Unknown build command for ${framework}, specify build command manually`,
+		);
 	}
 
 	async frameworkBuildEnvironment(): Promise<Record<string, string>> {
@@ -253,8 +271,8 @@ class FrontendPlugin implements Plugin {
 		const exitCode = await buildProcess.exitCode;
 		buildProgress.remove();
 		if (exitCode !== 0) {
-            this.log.error(buildProcess.stdout);
-            this.log.error(buildProcess.stderr);
+			this.log.error(buildProcess.stdout);
+			this.log.error(buildProcess.stderr);
 			throw new Error(`Build exited with code ${exitCode}`);
 		}
 	}
