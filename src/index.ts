@@ -110,7 +110,7 @@ class FrontendPlugin implements Plugin {
 		return this.serverless.service.custom.frontend;
 	}
 
-	async _hasFile(name: string): Promise<boolean> {
+	async #hasFile(name: string): Promise<boolean> {
 		try {
 			const stat = await fs.stat(name);
 			return stat.isFile();
@@ -127,7 +127,7 @@ class FrontendPlugin implements Plugin {
 			return this.customConfig.framework;
 		}
 
-		const hasNuxtConfig = await this._hasFile("nuxt.config.ts");
+		const hasNuxtConfig = await this.#hasFile("nuxt.config.ts");
 
 		const packageJson = JSON.parse(await fs.readFile("package.json", "utf8"));
 		this.log.info(JSON.stringify(packageJson, null, 2));
