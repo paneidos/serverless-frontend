@@ -122,6 +122,20 @@ class FrontendPlugin implements Plugin {
 		}
 	}
 
+    #hasSSR(framework: Framework | null): boolean {
+        switch(framework) {
+            case "nuxt":
+                case "nitro":
+            case "tanstack-start":
+                return true;
+            case "vite":
+            case null:
+                return false;
+            default:
+                throw new Error(`Don't know whether framework '${framework}' has SSR.`)
+        }
+    }
+
 	async detectFramework(): Promise<Framework | null> {
 		if (this.customConfig.framework !== undefined) {
 			return this.customConfig.framework;
@@ -388,12 +402,14 @@ class FrontendPlugin implements Plugin {
 					StandardCacheBehaviors.staticFilesWithFallback;
 				break;
 		}
-		this.addResource("SiteSSRCachePolicy", {
-			Type: "AWS::CloudFront::CachePolicy",
-			Properties: {
-				CachePolicyConfig: ServerFunctionCachePolicyConfig,
-			},
-		});
+        if (this.#hasSSR(framework)) {
+            this.addResource("SiteSSRCachePolicy", {
+                Type: "AWS::CloudFront::CachePolicy",
+                Properties: {
+                    CachePolicyConfig: ServerFunctionCachePolicyConfig,
+                },
+            });
+        }
 		this.addResource("SiteDistribution", {
 			Type: "AWS::CloudFront::Distribution",
 			Properties: {
@@ -442,7 +458,7 @@ class FrontendPlugin implements Plugin {
 			case "tanstack-start":
 			case "nuxt":
 			case "nitro":
-				this.addNitroFunction();
+				await this.addNitroFunction();
 		}
 	}
 
@@ -464,7 +480,7 @@ class FrontendPlugin implements Plugin {
 		for (const patternElement of pattern) {
 			archive.glob(patternElement, { cwd });
 		}
-		archive.finalize();
+		await archive.finalize();
 		await promise;
 	}
 
