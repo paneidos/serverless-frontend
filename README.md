@@ -1,6 +1,6 @@
 # Serverless Frontend
 
-Use [Serverless 3.x](https://serverless.com) to deploy your frontend app to AWS.
+Use [Serverless 3.x](https://serverless.com) (or [osls](https://github.com/oss-serverless/serverless)) to deploy your frontend app to AWS.
 
 # Installation
 
@@ -54,7 +54,7 @@ You can manually specify the framework to use:
 ```yaml
 custom:
   frontend:
-    framework: nuxt | tanstack-start | nitro | vite
+    framework: nitro  # nuxt | tanstack-start | nitro | vite
 ```
 
 
@@ -81,6 +81,11 @@ custom:
 Tip: you can use Serverless Compose to deploy the certificate to us-east-1,
 and deploy the app to another region.
 
+# Features
+
+- SSR mode (Nitro/Nuxt/TanStack Start)
+- SPA mode (Vite without SSR)
+
 # Architecture
 
 This package will deploy several resources to your AWS account,
@@ -90,14 +95,28 @@ which for small projects should all fall in the free tier.
 - Lambda for the server part
 - CloudFront distribution
 
-# Features
+## SSR Mode
 
-- SSR mode
-- SPA mode
+In SSR mode, this plugin configures the /assets (or /_nuxt for Nuxt) path to
+serve static assets from S3, and all other requests are routed to the Lambda function.
+Using origin groups, any 404 for the assets will also be routed to the Lambda.
+
+## SPA Mode
+
+In SPA mode, all requests are routed to S3, but using origin groups and
+a specially crafted origin, any 404/403 from S3 will result in serving the index.html.
+By specifying a origin path of `index.html?fallback=`, the original path becomes a query parameter
+and index.html is served instead.
 
 # Roadmap
 
 - Customisation of functions/resources
+
+# Why not use SST?
+
+SST is a great framework, but I didn't want to add Terraform to my tech stack.
+Using Serverless (almost) everything is handled by CloudFormation.
+It's a matter of preference, so I made something that works with Serverless.
 
 # Acknowledgments
 
