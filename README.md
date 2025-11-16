@@ -47,6 +47,38 @@ custom:
     buildCommand: [yarn, build]
 ```
 
+### Set environment variables for build
+
+When building for Nitro, Nuxt or TanStack Start, the plugin adds two variables to the build environment:
+- `NITRO_PRESET=aws-lambda`
+- `SERVER_PRESET=aws-lambda`
+
+If you need to override these or provide more variables, you can specify your own in the config:
+
+```yaml
+custom:
+  frontend:
+    buildEnvironment:
+      VITE_TITLE: "My App"
+```
+
+These variables are usually available at build time using `import.meta.env.VARIABLE_NAME`, 
+but only if the variable name has a specific prefix: `VITE_` for Vite, `NUXT_` for Nuxt, etc.
+
+## SSR environment variables
+
+To set environment variables for the SSR Lambda function,
+you can use the `ssrEnvironment` option:
+
+```yaml
+custom:
+  frontend:
+    ssrEnvironment:
+      API_URL: https://my-api.example.com/api/v1/
+```
+
+These variables are usually available at runtime on the server side using `process.env.VARIABLE_NAME`.
+
 ## Specify framework
 
 You can manually specify the framework to use:

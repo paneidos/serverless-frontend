@@ -35,8 +35,10 @@ type ServerlessOutputs = {
 
 interface FrontendConfig {
 	buildCommand?: string | string[];
+    buildEnvironment?: Record<string, string>;
 	framework?: Framework | null;
 	ssr?: boolean;
+    ssrEnvironment?: Record<string, string>;
 	aliases?: string[] | string;
 	certificate?: string;
 	cloudfront?: {
@@ -281,7 +283,8 @@ class FrontendPlugin implements Plugin {
 		if (cmd === undefined) {
 			throw new Error("No build command given");
 		}
-		const env = { ...process.env, ...(await this.frameworkBuildEnvironment()) };
+        const customEnv = this.customConfig.buildEnvironment ?? {};
+		const env = { ...process.env, ...(await this.frameworkBuildEnvironment()), ...customEnv };
 		const buildProcess = new Process(spawn(cmd, command, { env }));
 		const exitCode = await buildProcess.exitCode;
 		buildProgress.remove();
@@ -430,6 +433,7 @@ class FrontendPlugin implements Plugin {
 				memorySize: 1024,
 				events: [],
 				url: true,
+                environment: this.customConfig.ssrEnvironment,
 				package: {
 					individually: true,
 					artifact: ".serverless/frontend-function.zip",
