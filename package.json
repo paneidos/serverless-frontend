@@ -7,6 +7,20 @@
 	"repository": "https://github.com/paneidos/serverless-frontend.git",
 	"author": "Sernin van de Krol",
 	"license": "MIT",
+  "keywords": [
+    "serverless",
+    "serverless-framework",
+    "frontend",
+    "static-site",
+    "aws",
+    "s3",
+    "cloudfront",
+    "deployment",
+    "tanstack start",
+    "nuxt",
+    "vite",
+    "nitro"
+  ],
 	"scripts": {
 		"build": "tsc --project tsconfig.build.json",
 		"watch": "tsc --project tsconfig.build.json --watch",
