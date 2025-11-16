@@ -7,10 +7,11 @@ import type Serverless from "serverless";
 import type Aws from "serverless/aws";
 import type Plugin from "serverless/classes/Plugin";
 import {
-	type CloudfrontDistributionConfig,
-	ServerFunctionCachePolicyConfig,
-	StandardCacheBehaviors,
-	StandardOrigins,
+    cloudfrontArray,
+    type CloudfrontDistributionConfig,
+    ServerFunctionCachePolicyConfig,
+    StandardCacheBehaviors, StandardOriginGroups,
+    StandardOrigins,
 } from "./cloudfront";
 import { Process } from "./process";
 import {
@@ -357,6 +358,9 @@ class FrontendPlugin implements Plugin {
 					StandardOrigins.staticFiles,
 					StandardOrigins.serverFunction,
 				];
+                distributionConfig.OriginGroups = cloudfrontArray([
+                    StandardOriginGroups.staticFilesSSR,
+                ]);
 				distributionConfig.DefaultCacheBehavior =
 					StandardCacheBehaviors.serverFunction;
 				distributionConfig.CacheBehaviors = [];
@@ -366,7 +370,7 @@ class FrontendPlugin implements Plugin {
 					if (file.isFile() || file.isDirectory()) {
 						distributionConfig.CacheBehaviors.push({
 							PathPattern: file.name + (file.isDirectory() ? "/*" : ""),
-							...StandardCacheBehaviors.staticFiles,
+							...StandardCacheBehaviors.staticFilesSSR,
 						});
 					}
 				}
@@ -378,29 +382,11 @@ class FrontendPlugin implements Plugin {
 					StandardOrigins.staticFiles,
 					StandardOrigins.staticFilesFallback,
 				];
-				distributionConfig.OriginGroups = {
-					Quantity: 1,
-					Items: [
-						{
-							Id: "StaticFilesWithFallback",
-							FailoverCriteria: {
-								StatusCodes: {
-									Quantity: 2,
-									Items: [403, 404],
-								},
-							},
-							Members: {
-								Quantity: 2,
-								Items: [
-									{ OriginId: "StaticFiles" },
-									{ OriginId: "StaticFilesFallback" },
-								],
-							},
-						},
-					],
-				};
+				distributionConfig.OriginGroups = cloudfrontArray([
+                    StandardOriginGroups.staticFilesSPA,
+                ]);
 				distributionConfig.DefaultCacheBehavior =
-					StandardCacheBehaviors.staticFilesWithFallback;
+					StandardCacheBehaviors.staticFilesSPA;
 				break;
 		}
         if (this.#hasSSR(framework)) {

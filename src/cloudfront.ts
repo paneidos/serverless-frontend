@@ -41,6 +41,8 @@ export type CloudfrontCacheBehavior = {
 	ViewerProtocolPolicy: "allow-all" | "https-only" | "redirect-to-https";
 };
 
+export type DefaultCacheBehavior = Omit<CloudfrontCacheBehavior, 'PathPattern'>
+
 interface CloudfrontBaseOrigin {
 	DomainName: CfString;
 	Id: string;
@@ -105,38 +107,8 @@ export type CloudfrontDistributionConfig = {
 			| "TLSv1.2_2025";
 		SslSupportMethod: "sni-only";
 	};
-	DefaultCacheBehavior: Omit<CloudfrontCacheBehavior, "PathPattern">;
+	DefaultCacheBehavior: DefaultCacheBehavior;
 	CacheBehaviors: CloudfrontCacheBehavior[];
-};
-
-export const StandardCacheBehaviors: Record<
-	string,
-	Omit<CloudfrontCacheBehavior, "PathPattern">
-> = {
-	staticFiles: {
-		AllowedMethods: HttpMethods.ReadWithoutCors,
-		CachedMethods: HttpMethods.ReadWithoutCors,
-		CachePolicyId: CachePolicies.CachingOptimized,
-		OriginRequestPolicyId: OriginRequestPolicies.CORS_S3Origin,
-		TargetOriginId: "StaticFiles",
-		ViewerProtocolPolicy: "redirect-to-https",
-	},
-	staticFilesWithFallback: {
-		AllowedMethods: HttpMethods.ReadWithoutCors,
-		CachedMethods: HttpMethods.ReadWithoutCors,
-		CachePolicyId: CachePolicies.CachingOptimized,
-		OriginRequestPolicyId: OriginRequestPolicies.CORS_S3Origin,
-		TargetOriginId: "StaticFilesWithFallback",
-		ViewerProtocolPolicy: "redirect-to-https",
-	},
-	serverFunction: {
-		AllowedMethods: HttpMethods.ReadWrite,
-		CachedMethods: HttpMethods.Read,
-		CachePolicyId: CachePolicies.ServerFunctionCachePolicy,
-		OriginRequestPolicyId: OriginRequestPolicies.AllViewerExceptHostHeader,
-		TargetOriginId: "ServerFunction",
-		ViewerProtocolPolicy: "redirect-to-https",
-	},
 };
 
 export const ServerFunctionCachePolicyConfig = {
@@ -167,8 +139,10 @@ export const ServerFunctionCachePolicyConfig = {
 	},
 };
 
-export const StandardOrigins: Record<string, CloudfrontOrigin> = {
-	staticFiles: {
+const cloudfrontOrigin = (origin: CloudfrontOrigin) => origin
+
+export const StandardOrigins = {
+	staticFiles: cloudfrontOrigin({
 		Id: "StaticFiles",
 		OriginAccessControlId: {
 			"Fn::GetAtt": ["SiteOriginAccessControl", "Id"],
@@ -179,8 +153,8 @@ export const StandardOrigins: Record<string, CloudfrontOrigin> = {
 		DomainName: {
 			"Fn::GetAtt": ["SiteBucket", "RegionalDomainName"],
 		},
-	},
-	staticFilesFallback: {
+	}),
+	staticFilesFallback: cloudfrontOrigin({
 		Id: "StaticFilesFallback",
 		OriginAccessControlId: {
 			"Fn::GetAtt": ["SiteOriginAccessControl", "Id"],
@@ -192,8 +166,8 @@ export const StandardOrigins: Record<string, CloudfrontOrigin> = {
 			"Fn::GetAtt": ["SiteBucket", "RegionalDomainName"],
 		},
 		OriginPath: "/index.html?fallback=",
-	},
-	serverFunction: {
+	}),
+	serverFunction: cloudfrontOrigin({
 		Id: "ServerFunction",
 		CustomOriginConfig: {
 			OriginProtocolPolicy: "https-only",
@@ -210,5 +184,75 @@ export const StandardOrigins: Record<string, CloudfrontOrigin> = {
 				},
 			],
 		},
-	},
+	}),
 } as const;
+
+
+export function cloudfrontArray<T>(array: T[]): CloudfrontArray<T> {
+    return {
+        Quantity: array.length,
+        Items: array
+    }
+}
+
+const cloudfrontOriginGroup = (originGroup: CloudfrontOriginGroup) => originGroup
+
+export const StandardOriginGroups = {
+    staticFilesSPA: cloudfrontOriginGroup({
+        Id: "StaticFilesSPA",
+        FailoverCriteria: {
+            StatusCodes: cloudfrontArray([403, 404]),
+        },
+        Members: cloudfrontArray([
+            { OriginId: StandardOrigins.staticFiles.Id },
+            { OriginId: StandardOrigins.staticFilesFallback.Id },
+        ]),
+    }),
+    staticFilesSSR: cloudfrontOriginGroup({
+        Id: "StaticFilesSSR",
+        FailoverCriteria: {
+            StatusCodes: cloudfrontArray([403, 404]),
+        },
+        Members: cloudfrontArray([
+            { OriginId: StandardOrigins.staticFiles.Id },
+            { OriginId: StandardOrigins.serverFunction.Id },
+        ]),
+    })
+}
+
+const partialCacheBehavior = (behavior: DefaultCacheBehavior) => behavior
+
+export const StandardCacheBehaviors = {
+    staticFiles: partialCacheBehavior({
+        AllowedMethods: HttpMethods.ReadWithoutCors,
+        CachedMethods: HttpMethods.ReadWithoutCors,
+        CachePolicyId: CachePolicies.CachingOptimized,
+        OriginRequestPolicyId: OriginRequestPolicies.CORS_S3Origin,
+        TargetOriginId: StandardOrigins.staticFiles.Id,
+        ViewerProtocolPolicy: "redirect-to-https",
+    }),
+    staticFilesSPA: partialCacheBehavior({
+        AllowedMethods: HttpMethods.ReadWithoutCors,
+        CachedMethods: HttpMethods.ReadWithoutCors,
+        CachePolicyId: CachePolicies.CachingOptimized,
+        OriginRequestPolicyId: OriginRequestPolicies.CORS_S3Origin,
+        TargetOriginId: StandardOriginGroups.staticFilesSPA.Id,
+        ViewerProtocolPolicy: "redirect-to-https",
+    }),
+    staticFilesSSR: partialCacheBehavior({
+        AllowedMethods: HttpMethods.ReadWithoutCors,
+        CachedMethods: HttpMethods.ReadWithoutCors,
+        CachePolicyId: CachePolicies.CachingOptimized,
+        OriginRequestPolicyId: OriginRequestPolicies.CORS_S3Origin,
+        TargetOriginId: StandardOriginGroups.staticFilesSSR.Id,
+        ViewerProtocolPolicy: "redirect-to-https",
+    }),
+    serverFunction: partialCacheBehavior({
+        AllowedMethods: HttpMethods.ReadWrite,
+        CachedMethods: HttpMethods.Read,
+        CachePolicyId: CachePolicies.ServerFunctionCachePolicy,
+        OriginRequestPolicyId: OriginRequestPolicies.AllViewerExceptHostHeader,
+        TargetOriginId: StandardOrigins.serverFunction.Id,
+        ViewerProtocolPolicy: "redirect-to-https",
+    }),
+};
