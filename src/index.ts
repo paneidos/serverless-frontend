@@ -373,6 +373,7 @@ class FrontendPlugin implements Plugin {
 				break;
 			}
 			case "vite":
+                distributionConfig.DefaultRootObject = 'index.html';
 				distributionConfig.Origins = [
 					StandardOrigins.staticFiles,
 					StandardOrigins.staticFilesFallback,

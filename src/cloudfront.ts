@@ -86,6 +86,7 @@ export type CloudfrontDistributionConfig = {
 	HttpVersion: "http1.1" | "http2" | "http2and3" | "http3";
 	PriceClass: "PriceClass_100" | "PriceClass_200" | "PriceClass_All";
 	IPV6Enabled: boolean;
+    DefaultRootObject?: string;
 	Aliases?: string[];
 	Comment?: string;
 	Origins: CloudfrontOrigin[];
