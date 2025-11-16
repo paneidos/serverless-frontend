@@ -97,6 +97,7 @@ class FrontendPlugin implements Plugin {
 				this.serverless.pluginManager.spawn("frontend:build"),
 			"before:package:function:package": () =>
 				this.serverless.pluginManager.spawn("frontend:build"),
+			"before:deploy:deploy": this.preUploadAssets.bind(this),
 			"after:deploy:deploy": () =>
 				this.serverless.pluginManager.spawn("frontend:upload"),
 			"frontend:addFunctions:addFunctions": this.addFunctions.bind(this),
@@ -490,11 +491,29 @@ class FrontendPlugin implements Plugin {
 		packageProgress.remove();
 	}
 
+    async preUploadAssets() {
+        // Upload the assets before uploading the SSR function, so that visitors don't see a broken site
+        const framework = await this.detectFramework();
+        if (this.#hasSSR(framework)) {
+            const outputs = await this.getStackOutputs();
+            if (!('SiteBucketName' in outputs)) {
+                // Initial deploy doesn't have the bucket/output yet
+                this.log.info("SiteBucketName output not found, skipping asset upload");
+                return;
+            }
+            await this.serverless.pluginManager.spawn('frontend:upload');
+        }
+    }
+
 	async uploadAssets() {
+        const outputs = await this.getStackOutputs();
+        if (!('SiteBucketName' in outputs)) {
+            throw new Error('SiteBucketName output not found');
+        }
+
+        const bucketName = outputs.SiteBucketName;
 		const uploadProgress = this.progress.get("upload");
 		uploadProgress.update("Uploading frontend");
-		const outputs = await this.getStackOutputs();
-		const bucketName = outputs.SiteBucketName;
 		const framework = await this.detectFramework();
 
 		const directory =
