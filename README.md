@@ -89,6 +89,34 @@ custom:
     framework: nitro  # nuxt | tanstack-start | nitro | vite
 ```
 
+## Host header
+
+Because the SSR lambda function is behind CloudFront, it'll have a different host header.
+In particular, it'll be the one used for the Lambda Function URL.
+Therefore, the default configuration forwards the host header from CloudFront to the Lambda in the `X-Forwarded-Host` header.
+If you're not using this header in your app, you can disable this behaviour:
+
+```yaml
+custom:
+  frontend:
+    ssrForwardHost: false
+```
+
+If you do want to use the `X-Forwarded-Host` header, make sure to read it in your app.
+Nitro-based apps can read it automatically in the `getRequestUrl` function by specifying the appropriate options:
+
+### Nuxt
+```typescript
+getRequestURL(event, { xForwardedHost: true })
+```
+
+### TanStack Start
+
+```typescript
+import { getRequestUrl } from "@tanstack/react-start/server"
+
+getRequestUrl({ xForwardedHost: true })
+```
 
 ## Custom domain name
 
