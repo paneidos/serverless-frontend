@@ -24,7 +24,7 @@ export const HttpMethods = {
     ReadWrite: ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"],
 } as const;
 
-export type CloudfrontCacheBehavior = {
+export type CloudFrontCacheBehavior = {
     PathPattern: string;
     AllowedMethods: (typeof HttpMethods)[keyof typeof HttpMethods];
     CachedMethods: (typeof HttpMethods)["Read" | "ReadWithoutCors"];
@@ -41,15 +41,15 @@ export type CloudfrontCacheBehavior = {
     ViewerProtocolPolicy: "allow-all" | "https-only" | "redirect-to-https";
 };
 
-export type DefaultCacheBehavior = Omit<CloudfrontCacheBehavior, "PathPattern">;
+export type DefaultCacheBehavior = Omit<CloudFrontCacheBehavior, "PathPattern">;
 
-interface CloudfrontBaseOrigin {
+interface CloudFrontBaseOrigin {
     DomainName: CfString;
     Id: string;
     OriginPath?: string;
 }
 
-interface CloudfrontCustomOrigin extends CloudfrontBaseOrigin {
+interface CloudFrontCustomOrigin extends CloudFrontBaseOrigin {
     CustomOriginConfig: {
         HTTPPort?: number;
         HTTPSPort?: number;
@@ -61,32 +61,32 @@ interface CloudfrontCustomOrigin extends CloudfrontBaseOrigin {
     };
 }
 
-interface CloudfrontS3Origin extends CloudfrontBaseOrigin {
+interface CloudFrontS3Origin extends CloudFrontBaseOrigin {
     OriginAccessControlId: CfString;
     S3OriginConfig?: {
         OriginAccessIdentity: "";
     };
 }
 
-export type CloudfrontOrigin = CloudfrontS3Origin | CloudfrontCustomOrigin;
+export type CloudFrontOrigin = CloudFrontS3Origin | CloudFrontCustomOrigin;
 
-type CloudfrontArray<T> = {
+type CloudFrontArray<T> = {
     Quantity: number;
     Items: T[];
 };
 
-type CloudfrontOriginGroup = {
+type CloudFrontOriginGroup = {
     FailoverCriteria: {
-        StatusCodes: CloudfrontArray<number>;
+        StatusCodes: CloudFrontArray<number>;
     };
     Id: string;
-    Members: CloudfrontArray<{
+    Members: CloudFrontArray<{
         OriginId: string;
     }>;
     SelectionCriteria?: "default" | "media-quality-based";
 };
 
-export type CloudfrontDistributionConfig = {
+export type CloudFrontDistributionConfig = {
     Enabled: boolean;
     HttpVersion: "http1.1" | "http2" | "http2and3" | "http3";
     PriceClass: "PriceClass_100" | "PriceClass_200" | "PriceClass_All";
@@ -94,8 +94,8 @@ export type CloudfrontDistributionConfig = {
     DefaultRootObject?: string;
     Aliases?: string[];
     Comment?: string;
-    Origins: CloudfrontOrigin[];
-    OriginGroups?: CloudfrontArray<CloudfrontOriginGroup>;
+    Origins: CloudFrontOrigin[];
+    OriginGroups?: CloudFrontArray<CloudFrontOriginGroup>;
     ViewerCertificate?: {
         AcmCertificateArn: string;
         MinimumProtocolVersion:
@@ -111,7 +111,7 @@ export type CloudfrontDistributionConfig = {
         SslSupportMethod: "sni-only";
     };
     DefaultCacheBehavior: DefaultCacheBehavior;
-    CacheBehaviors: CloudfrontCacheBehavior[];
+    CacheBehaviors: CloudFrontCacheBehavior[];
 };
 
 export const ServerFunctionCachePolicyConfig = {
@@ -142,7 +142,7 @@ export const ServerFunctionCachePolicyConfig = {
     },
 };
 
-const cloudfrontOrigin = (origin: CloudfrontOrigin) => origin;
+const cloudfrontOrigin = (origin: CloudFrontOrigin) => origin;
 
 export const StandardOrigins = {
     staticFiles: cloudfrontOrigin({
@@ -195,14 +195,14 @@ export const StandardOrigins = {
     }),
 } as const;
 
-export function cloudfrontArray<T>(array: T[]): CloudfrontArray<T> {
+export function cloudfrontArray<T>(array: T[]): CloudFrontArray<T> {
     return {
         Quantity: array.length,
         Items: array,
     };
 }
 
-const cloudfrontOriginGroup = (originGroup: CloudfrontOriginGroup) =>
+const cloudfrontOriginGroup = (originGroup: CloudFrontOriginGroup) =>
     originGroup;
 
 export const StandardOriginGroups = {

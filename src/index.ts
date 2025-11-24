@@ -7,8 +7,8 @@ import type Serverless from "serverless";
 import type Aws from "serverless/aws";
 import type Plugin from "serverless/classes/Plugin";
 import {
+    type CloudFrontDistributionConfig,
     CloudFrontFunctions,
-    type CloudfrontDistributionConfig,
     cloudfrontArray,
     ServerFunctionCachePolicyConfig,
     StandardCacheBehaviors,
@@ -46,12 +46,12 @@ interface FrontendConfig {
     certificate?: string;
     cloudfront?: {
         description?: string;
-        price_class?: CloudfrontDistributionConfig["PriceClass"];
+        price_class?: CloudFrontDistributionConfig["PriceClass"];
         ipv6?: boolean;
         enabled?: boolean;
-        http?: CloudfrontDistributionConfig["HttpVersion"];
+        http?: CloudFrontDistributionConfig["HttpVersion"];
         ssl_version?: Exclude<
-            CloudfrontDistributionConfig["ViewerCertificate"],
+            CloudFrontDistributionConfig["ViewerCertificate"],
             undefined
         >["MinimumProtocolVersion"];
     };
@@ -323,7 +323,7 @@ class FrontendPlugin implements Plugin {
         });
     }
 
-    async addCloudfrontResources() {
+    async addCloudFrontResources() {
         this.addResource("SiteOriginAccessControl", {
             Type: "AWS::CloudFront::OriginAccessControl",
             Properties: {
@@ -343,7 +343,7 @@ class FrontendPlugin implements Plugin {
             },
         });
         const config = this.customConfig.cloudfront ?? {};
-        const distributionConfig: Partial<CloudfrontDistributionConfig> = {
+        const distributionConfig: Partial<CloudFrontDistributionConfig> = {
             Enabled: config.enabled ?? true,
             HttpVersion: config.http ?? "http2and3",
             PriceClass: config.price_class ?? "PriceClass_100",
@@ -466,7 +466,7 @@ class FrontendPlugin implements Plugin {
 
     async addResources() {
         await this.addBucketResources();
-        await this.addCloudfrontResources();
+        await this.addCloudFrontResources();
     }
 
     async addNitroFunction() {
