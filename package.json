@@ -1,6 +1,6 @@
 {
 	"name": "serverless-frontend",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "Deploy frontend along with your Serverless application",
 	"main": "lib/index.js",
 	"types": "lib/index.d.ts",
