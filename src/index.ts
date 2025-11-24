@@ -516,7 +516,7 @@ class FrontendPlugin implements Plugin {
         });
         archive.pipe(output);
         for (const patternElement of pattern) {
-            archive.glob(patternElement, { cwd });
+            archive.glob(patternElement, { cwd, dot: true });
         }
         await archive.finalize();
         await promise;
