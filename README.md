@@ -171,6 +171,9 @@ and index.html is served instead.
 # Roadmap
 
 - Customisation of functions/resources
+- Streaming support
+- Update frontend bucket using a custom resource
+- Cleanup of old frontend resources
 
 # Why not use SST?
 
