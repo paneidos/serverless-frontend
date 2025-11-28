@@ -3,7 +3,10 @@ import fs, { readdir } from "node:fs/promises";
 import archiver from "archiver";
 import { identifyPackageManager } from "identify-package-manager";
 import mime from "mime";
+
 import type Serverless from "serverless";
+import type { FunctionDefinition } from "serverless";
+
 import type Aws from "serverless/aws";
 import type Plugin from "serverless/classes/Plugin";
 import {
@@ -33,6 +36,14 @@ type ServerlessOutputs = {
     serviceOutputs: {
         set: (name: string, value: string) => void;
     };
+};
+
+type FunctionDefinitionUrl = {
+    url?:
+        | boolean
+        | {
+              invokeMode: "BUFFERED" | "RESPONSE_STREAM";
+          };
 };
 
 interface FrontendConfig {
@@ -305,6 +316,34 @@ class FrontendPlugin implements Plugin {
             this.log.error(buildProcess.stdout);
             this.log.error(buildProcess.stderr);
             throw new Error(`Build exited with code ${exitCode}`);
+        }
+
+        switch (await this.detectFramework()) {
+            case "nitro":
+            case "nuxt":
+            case "tanstack-start":
+                {
+                    try {
+                        const nitroJson = JSON.parse(
+                            await fs.readFile(".output/nitro.json", {
+                                encoding: "utf-8",
+                            }),
+                        );
+                        if (nitroJson.config.awsLambda.streaming) {
+                            const server: FunctionDefinition &
+                                FunctionDefinitionUrl =
+                                this.serverless.service.functions.server;
+                            server.url = {
+                                invokeMode: "RESPONSE_STREAM",
+                            };
+                        }
+                    } catch (e) {
+                        this.log.error(
+                            "Unable to detect streaming support from .output/nitro.json, assuming disabled.",
+                        );
+                    }
+                }
+                break;
         }
     }
 
