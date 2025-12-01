@@ -312,6 +312,9 @@ class FrontendPlugin implements Plugin {
                         return streaming ?? false;
                     } catch (e) {
                         this.log.error(
+                            `Error reading .output/nitro.json: ${e}`,
+                        );
+                        this.log.error(
                             "Unable to detect streaming support from .output/nitro.json, assuming disabled.",
                         );
                     }
