@@ -53,6 +53,7 @@ interface FrontendConfig {
     ssr?: boolean;
     ssrEnvironment?: Record<string, string>;
     ssrForwardHost?: boolean;
+    streaming?: boolean;
     aliases?: string[] | string;
     certificate?: string;
     cloudfront?: {
@@ -289,6 +290,37 @@ class FrontendPlugin implements Plugin {
         return {};
     }
 
+    async #isStreaming(): Promise<boolean> {
+        switch (await this.detectFramework()) {
+            case "nitro":
+            case "nuxt":
+            case "tanstack-start":
+                {
+                    try {
+                        const nitroJson = JSON.parse(
+                            await fs.readFile(".output/nitro.json", {
+                                encoding: "utf-8",
+                            }),
+                        );
+                        const streaming: boolean | undefined =
+                            nitroJson?.config?.awsLambda?.streaming;
+                        if (streaming == null) {
+                            this.log.error(
+                                "Unable to detect streaming support from .output/nitro.json, assuming disabled.",
+                            );
+                        }
+                        return streaming ?? false;
+                    } catch (e) {
+                        this.log.error(
+                            "Unable to detect streaming support from .output/nitro.json, assuming disabled.",
+                        );
+                    }
+                }
+                break;
+        }
+        return false;
+    }
+
     async build() {
         const buildProgress = this.progress.get("build");
         buildProgress.update("Building frontend");
@@ -318,32 +350,18 @@ class FrontendPlugin implements Plugin {
             throw new Error(`Build exited with code ${exitCode}`);
         }
 
-        switch (await this.detectFramework()) {
-            case "nitro":
-            case "nuxt":
-            case "tanstack-start":
-                {
-                    try {
-                        const nitroJson = JSON.parse(
-                            await fs.readFile(".output/nitro.json", {
-                                encoding: "utf-8",
-                            }),
-                        );
-                        if (nitroJson.config.awsLambda.streaming) {
-                            const server: FunctionDefinition &
-                                FunctionDefinitionUrl =
-                                this.serverless.service.functions.server;
-                            server.url = {
-                                invokeMode: "RESPONSE_STREAM",
-                            };
-                        }
-                    } catch (e) {
-                        this.log.error(
-                            "Unable to detect streaming support from .output/nitro.json, assuming disabled.",
-                        );
-                    }
-                }
-                break;
+        const streaming = await this.#isStreaming();
+        if (streaming && this.customConfig.streaming === false) {
+            this.log.warning(
+                "Streaming is enabled in the build, but disabled in the plugin configuration.",
+            );
+        }
+        if (this.customConfig.streaming ?? streaming) {
+            const server: FunctionDefinition & FunctionDefinitionUrl =
+                this.serverless.service.functions.server;
+            server.url = {
+                invokeMode: "RESPONSE_STREAM",
+            };
         }
     }
 
