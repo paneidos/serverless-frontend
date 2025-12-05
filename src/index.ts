@@ -412,7 +412,7 @@ class FrontendPlugin implements Plugin {
         };
         const aliases = this.customConfig.aliases;
         const certificate = this.customConfig.certificate;
-        if (aliases && certificate) {
+        if (aliases && aliases !== 'null' && certificate && certificate !== 'null') {
             if (typeof aliases === "string") {
                 distributionConfig.Aliases = aliases.split(",");
             } else {
