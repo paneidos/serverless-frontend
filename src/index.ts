@@ -1,12 +1,11 @@
 import { spawn } from "node:child_process";
 import fs, { readdir } from "node:fs/promises";
+import * as path from "node:path";
 import archiver from "archiver";
 import { identifyPackageManager } from "identify-package-manager";
 import mime from "mime";
-
 import type Serverless from "serverless";
 import type { FunctionDefinition } from "serverless";
-
 import type Aws from "serverless/aws";
 import type Plugin from "serverless/classes/Plugin";
 import {
@@ -33,7 +32,7 @@ interface AwsOutput {
 
 type Framework = "vite" | "nitro" | "nuxt" | "tanstack-start";
 
-type ServerlessOutputs = {
+export type ServerlessOutputs = {
     serviceOutputs: {
         set: (name: string, value: string) => void;
     };
@@ -71,6 +70,10 @@ interface FrontendConfig {
     };
 }
 
+function dummy() {
+    // Do nothing, used to fill undefined methods
+}
+
 class FrontendPlugin implements Plugin {
     commands: Plugin.Commands | undefined;
     hooks: Plugin.Hooks;
@@ -89,8 +92,16 @@ class FrontendPlugin implements Plugin {
         this.options = options;
         this.provider = this.serverless.getProvider("aws");
         this.hooks = {};
-        this.log = log;
-        this.progress = progress;
+        this.log = log ?? {
+            info: dummy,
+            error: dummy,
+        };
+        this.progress = progress ?? {
+            get: (name: string) => ({
+                update: dummy,
+                remove: dummy,
+            }),
+        };
         this.commands = {
             frontend: {
                 commands: {
@@ -455,9 +466,12 @@ class FrontendPlugin implements Plugin {
                     StandardCacheBehaviors.serverFunction;
                 distributionConfig.CacheBehaviors = [];
                 const publicDirectory = ".output/public";
-                const files = await readdir(publicDirectory, {
-                    withFileTypes: true,
-                });
+                const files = await readdir(
+                    path.join(this.serverless.serviceDir, publicDirectory),
+                    {
+                        withFileTypes: true,
+                    },
+                );
                 for (const file of files) {
                     if (file.isFile() || file.isDirectory()) {
                         distributionConfig.CacheBehaviors.push({
@@ -557,7 +571,10 @@ class FrontendPlugin implements Plugin {
                 environment: this.customConfig.ssrEnvironment,
                 package: {
                     individually: true,
-                    artifact: ".serverless/frontend-function.zip",
+                    artifact: path.join(
+                        this.serverless.serviceDir,
+                        ".serverless/frontend-function.zip",
+                    ),
                 },
             },
         };
@@ -580,7 +597,10 @@ class FrontendPlugin implements Plugin {
         pattern: string | string[] = ["*", "**/*"],
     ) {
         const archive = archiver("zip", {});
-        const fd = await fs.open(file, "w");
+        const fd = await fs.open(
+            path.join(this.serverless.serviceDir, file),
+            "w",
+        );
         const output = fd.createWriteStream();
         const promise = new Promise((resolve, reject) => {
             output.on("close", () => {
@@ -652,10 +672,13 @@ class FrontendPlugin implements Plugin {
                   : framework === "nitro" || framework === "vite"
                     ? /^assets\//
                     : /^$/;
-        const files = await fs.readdir(directory, {
-            recursive: true,
-            withFileTypes: true,
-        });
+        const files = await fs.readdir(
+            path.join(this.serverless.serviceDir, directory),
+            {
+                recursive: true,
+                withFileTypes: true,
+            },
+        );
         const cacheControls = StandardCacheControl;
         for (const file of files) {
             if (!file.isFile()) {

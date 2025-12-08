@@ -1,0 +1,5 @@
+service: nitro-test
+
+provider:
+  name: aws
+
