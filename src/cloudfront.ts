@@ -49,7 +49,7 @@ interface CloudFrontBaseOrigin {
     OriginPath?: string;
 }
 
-interface CloudFrontCustomOrigin extends CloudFrontBaseOrigin {
+export interface CloudFrontCustomOrigin extends CloudFrontBaseOrigin {
     CustomOriginConfig: {
         HTTPPort?: number;
         HTTPSPort?: number;
@@ -61,7 +61,7 @@ interface CloudFrontCustomOrigin extends CloudFrontBaseOrigin {
     };
 }
 
-interface CloudFrontS3Origin extends CloudFrontBaseOrigin {
+export interface CloudFrontS3Origin extends CloudFrontBaseOrigin {
     OriginAccessControlId: CfString;
     S3OriginConfig?: {
         OriginAccessIdentity: "";

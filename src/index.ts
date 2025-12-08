@@ -10,6 +10,7 @@ import type { FunctionDefinition } from "serverless";
 import type Aws from "serverless/aws";
 import type Plugin from "serverless/classes/Plugin";
 import {
+    type CloudFrontCustomOrigin,
     type CloudFrontDistributionConfig,
     CloudFrontFunctions,
     cloudfrontArray,
@@ -53,6 +54,7 @@ interface FrontendConfig {
     ssr?: boolean;
     ssrEnvironment?: Record<string, string>;
     ssrForwardHost?: boolean;
+    ssrTimeout?: number;
     streaming?: boolean;
     aliases?: string[] | string;
     certificate?: string;
@@ -412,7 +414,12 @@ class FrontendPlugin implements Plugin {
         };
         const aliases = this.customConfig.aliases;
         const certificate = this.customConfig.certificate;
-        if (aliases && aliases !== 'null' && certificate && certificate !== 'null') {
+        if (
+            aliases &&
+            aliases !== "null" &&
+            certificate &&
+            certificate !== "null"
+        ) {
             if (typeof aliases === "string") {
                 distributionConfig.Aliases = aliases.split(",");
             } else {
@@ -430,9 +437,16 @@ class FrontendPlugin implements Plugin {
             case "nuxt":
             case "nitro":
             case "tanstack-start": {
+                const serverFunction: CloudFrontCustomOrigin = JSON.parse(
+                    JSON.stringify(StandardOrigins.serverFunction),
+                );
+                if (this.customConfig.ssrTimeout) {
+                    serverFunction.CustomOriginConfig.OriginReadTimeout =
+                        this.customConfig.ssrTimeout;
+                }
                 distributionConfig.Origins = [
                     StandardOrigins.staticFiles,
-                    StandardOrigins.serverFunction,
+                    serverFunction,
                 ];
                 distributionConfig.OriginGroups = cloudfrontArray([
                     StandardOriginGroups.staticFilesSSR,
@@ -536,7 +550,7 @@ class FrontendPlugin implements Plugin {
             server: {
                 name: `${service}-${stage}-server`,
                 handler: "server/index.handler",
-                timeout: 10,
+                timeout: this.customConfig.ssrTimeout ?? 30,
                 memorySize: 1024,
                 events: [],
                 url: true,
