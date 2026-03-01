@@ -54,6 +54,12 @@ interface FrontendConfig {
     ssrEnvironment?: Record<string, string>;
     ssrForwardHost?: boolean;
     ssrTimeout?: number;
+    ssrMemorySize?: number;
+    ssrRuntime?: `nodejs${number}.x`;
+    ssrArchitecture: "x86_64" | "arm64";
+    ssrProvisionedConcurrency?: number;
+    ssrReservedConcurrency?: number;
+    ssrTracing?: string;
     streaming?: boolean;
     aliases?: string[] | string;
     certificate?: string;
@@ -565,7 +571,13 @@ class FrontendPlugin implements Plugin {
                 name: `${service}-${stage}-server`,
                 handler: "server/index.handler",
                 timeout: this.customConfig.ssrTimeout ?? 30,
-                memorySize: 1024,
+                memorySize: this.customConfig.ssrMemorySize ?? 1024,
+                runtime: this.customConfig.ssrRuntime,
+                architecture: this.customConfig.ssrArchitecture,
+                provisionedConcurrency:
+                    this.customConfig.ssrProvisionedConcurrency,
+                reservedConcurrency: this.customConfig.ssrReservedConcurrency,
+                tracing: this.customConfig.ssrTracing,
                 events: [],
                 url: true,
                 environment: this.customConfig.ssrEnvironment,
