@@ -18,7 +18,7 @@ service: my-tanstack-start-app
 provider:
   name: aws
   region: eu-central-1
-  runtime: nodejs22.x
+  runtime: nodejs24.x
 plugins:
   - serverless-frontend
 ```
@@ -141,6 +141,34 @@ custom:
 Tip: you can use Serverless Compose to deploy the certificate to us-east-1,
 and deploy the app to another region.
 
+## Streaming
+
+Streaming is experimental and can be enabled by setting `streaming` to `true` in the config:
+
+```yaml
+custom:
+  frontend:
+    streaming: true
+```
+
+## CloudFront distribution configuration
+By default, the plugin configures CloudFront with a set of reasonable defaults for a frontend app.
+However, you can provide your own CloudFront configuration to override the defaults:
+```yaml
+custom:
+  frontend:
+    cloudfront:
+      description: string;
+      price_class: PriceClass_100 | PriceClass_200 | PriceClass_All
+      ipv6: boolean
+      enabled: boolean
+      http: http1.1 | http2 | http2and3 | http3
+      ssl_version: SSLv3 | TLSv1 | TLSv1_2016 | TLSv1.1_2016 | TLSv1.2_2018 | TLSv1.2_2019 | TLSv1.2_2021 | TLSv1.3_2025 | TLSv1.2_2025
+      extraCacheBehaviors: Array<CacheBehavior>
+      extraOrigins: Array<Origin>
+      extraOriginGroups: Array<OriginGroup>  # Note: do not provide the wrapping structure usually required by CloudFormation, just the inner array of origin groups, as the plugin will handle the rest.
+```
+
 # Features
 
 - SSR mode (Nitro/Nuxt/TanStack Start)
@@ -161,6 +189,19 @@ In SSR mode, this plugin configures the /assets (or /_nuxt for Nuxt) path to
 serve static assets from S3, and all other requests are routed to the Lambda function.
 Using origin groups, any 404 for the assets will also be routed to the Lambda.
 
+### Options
+```yaml
+custom:
+  frontend:
+    ssrTimeout: number  # in seconds, default 30
+    ssrMemorySize: number  # in MB, default 1024
+    ssrRuntime: nodejs24.x  # defaults to provider default
+    ssrArchitecture: x86_64 | arm64 # defaults to provider default
+    ssrProvisionedConcurrency: number # defaults to provider default, which is usually 0 (no provisioned concurrency)
+    ssrReservedConcurrency: number # defaults to provider default, which is usually unreserved
+    ssrTracing: Active | PassThrough # defaults to provider default, which is usually PassThrough
+```
+
 ## SPA Mode
 
 In SPA mode, all requests are routed to S3, but using origin groups and
@@ -171,7 +212,6 @@ and index.html is served instead.
 # Roadmap
 
 - Customisation of functions/resources
-- Streaming support
 - Update frontend bucket using a custom resource
 - Cleanup of old frontend resources
 
