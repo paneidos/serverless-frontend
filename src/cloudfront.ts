@@ -75,7 +75,7 @@ type CloudFrontArray<T> = {
     Items: T[];
 };
 
-type CloudFrontOriginGroup = {
+export type CloudFrontOriginGroup = {
     FailoverCriteria: {
         StatusCodes: CloudFrontArray<number>;
     };

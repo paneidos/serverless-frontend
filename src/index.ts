@@ -9,9 +9,12 @@ import type { FunctionDefinition } from "serverless";
 import type Aws from "serverless/aws";
 import type Plugin from "serverless/classes/Plugin";
 import {
+    type CloudFrontCacheBehavior,
     type CloudFrontCustomOrigin,
     type CloudFrontDistributionConfig,
     CloudFrontFunctions,
+    type CloudFrontOrigin,
+    type CloudFrontOriginGroup,
     cloudfrontArray,
     ServerFunctionCachePolicyConfig,
     StandardCacheBehaviors,
@@ -73,6 +76,9 @@ interface FrontendConfig {
             CloudFrontDistributionConfig["ViewerCertificate"],
             undefined
         >["MinimumProtocolVersion"];
+        extraCacheBehaviors?: CloudFrontCacheBehavior[];
+        extraOrigins?: CloudFrontOrigin[];
+        extraOriginGroups?: CloudFrontOriginGroup[];
     };
 }
 
@@ -502,7 +508,29 @@ class FrontendPlugin implements Plugin {
                     StandardCacheBehaviors.staticFilesSPA;
                 break;
         }
-        if (this.#hasSSR(framework)) {
+        {
+            const cloudfrontConfig = this.customConfig.cloudfront;
+            if (cloudfrontConfig != null) {
+                if (cloudfrontConfig.extraOrigins != null) {
+                    distributionConfig.Origins = (
+                        distributionConfig.Origins ?? []
+                    ).concat(cloudfrontConfig.extraOrigins);
+                }
+                if (cloudfrontConfig.extraOriginGroups != null) {
+                    const newGroups = (
+                        distributionConfig.OriginGroups?.Items ?? []
+                    ).concat(cloudfrontConfig.extraOriginGroups);
+                    distributionConfig.OriginGroups =
+                        cloudfrontArray(newGroups);
+                }
+                if (cloudfrontConfig.extraCacheBehaviors != null) {
+                    distributionConfig.CacheBehaviors = (
+                        distributionConfig.CacheBehaviors ?? []
+                    ).concat(cloudfrontConfig.extraCacheBehaviors);
+                }
+            }
+        }
+        if (this.#hasSSR(framework) || this.customConfig.ssr) {
             this.addResource("SiteSSRCachePolicy", {
                 Type: "AWS::CloudFront::CachePolicy",
                 Properties: {
