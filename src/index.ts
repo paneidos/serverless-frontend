@@ -703,7 +703,9 @@ class FrontendPlugin implements Plugin {
             framework === "tanstack-start" ||
             framework === "nuxt"
                 ? ".output/public"
-                : "dist";
+                : this.customConfig.ssr
+                  ? "dist/client"
+                  : "dist";
         const immutableAssets =
             framework === "nuxt"
                 ? /^_nuxt\//
