@@ -712,20 +712,26 @@ class FrontendPlugin implements Plugin {
                   : framework === "nitro" || framework === "vite"
                     ? /^assets\//
                     : /^$/;
-        const files = await fs.readdir(
-            path.join(this.serverless.serviceDir, directory),
-            {
-                recursive: true,
-                withFileTypes: true,
-            },
-        );
+        const fullDirectory = path.join(this.serverless.serviceDir, directory);
+        const prefix = fullDirectory + path.sep;
+        const files = await fs.readdir(fullDirectory, {
+            recursive: true,
+            withFileTypes: true,
+        });
         const cacheControls = StandardCacheControl;
         for (const file of files) {
             if (!file.isFile()) {
                 continue;
             }
             const fullPath = `${file.parentPath}/${file.name}`;
-            const baseKey = fullPath.substring(directory.length + 1);
+            if (!fullPath.startsWith(prefix)) {
+                console.warn(
+                    "Skipping file outside of the directory:",
+                    fullPath,
+                );
+                continue;
+            }
+            const baseKey = fullPath.substring(prefix.length);
             const targetKey = baseKey;
             const cacheControl = baseKey.match(immutableAssets)
                 ? cacheControls.immutable
