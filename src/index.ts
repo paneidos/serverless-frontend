@@ -216,23 +216,39 @@ class FrontendPlugin implements Plugin {
         return this.customConfig.framework;
     }
 
-    async getStackOutputs(): Promise<Record<string, string>> {
+    async getStackOutputs(
+        throwWhenMissing: boolean = true,
+    ): Promise<Record<string, string>> {
         const stackName = this.provider.naming.getStackName();
-        const result = await this.provider.request(
-            "CloudFormation",
-            "describeStacks",
-            { StackName: stackName },
-        );
-        if (result.Stacks.length === 0) {
-            return {};
+        try {
+            const result = await this.provider.request(
+                "CloudFormation",
+                "describeStacks",
+                { StackName: stackName },
+            );
+            if (result.Stacks.length === 0) {
+                return {};
+            }
+            return result.Stacks[0].Outputs.reduce(
+                (obj: Record<string, string>, output: AwsOutput) => {
+                    obj[output.OutputKey] = output.OutputValue;
+                    return obj;
+                },
+                {} satisfies Record<string, string>,
+            );
+        } catch (e) {
+            if (
+                !throwWhenMissing &&
+                typeof e === "object" &&
+                e != null &&
+                "code" in e &&
+                e.code ===
+                    "AWS_CLOUD_FORMATION_DESCRIBE_STACKS_VALIDATION_ERROR"
+            ) {
+                return {};
+            }
+            throw e;
         }
-        return result.Stacks[0].Outputs.reduce(
-            (obj: Record<string, string>, output: AwsOutput) => {
-                obj[output.OutputKey] = output.OutputValue;
-                return obj;
-            },
-            {} satisfies Record<string, string>,
-        );
     }
 
     addResource(logicalId: string, config: Aws.CloudFormationResource) {
@@ -675,7 +691,7 @@ class FrontendPlugin implements Plugin {
         // Upload the assets before uploading the SSR function, so that visitors don't see a broken site
         const framework = await this.detectFramework();
         if (this.#hasSSR(framework)) {
-            const outputs = await this.getStackOutputs();
+            const outputs = await this.getStackOutputs(false);
             if (!("SiteBucketName" in outputs)) {
                 // Initial deploy doesn't have the bucket/output yet
                 this.log.info(
